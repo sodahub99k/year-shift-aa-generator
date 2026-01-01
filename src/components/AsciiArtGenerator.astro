@@ -1,0 +1,364 @@
+---
+import { DIGIT_ART, DIGIT_HEIGHT, DIGIT_WIDTH } from "../lib/digitArt.mjs";
+import { buildShiftAscii } from "../lib/aaCore.mjs";
+
+const DEFAULT_FROM_YEAR = "2025";
+const DEFAULT_TO_YEAR = "2026";
+
+const INITIAL_ASCII = buildShiftAscii(DEFAULT_FROM_YEAR, DEFAULT_TO_YEAR);
+---
+
+<section class="generator">
+  <style>
+    .generator {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      align-items: center;
+      text-align: center;
+    }
+    .panel {
+      background: #f4f5f7;
+      border-radius: 12px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      align-items: center;
+      text-align: center;
+      width: 100%;
+    }
+    .year-inputs {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .digit-input {
+      width: 3.5rem;
+      padding: 0.5rem;
+      font-size: 1.5rem;
+      text-align: center;
+      border: 1px solid #cbd5f5;
+      border-radius: 8px;
+      font-family: monospace;
+    }
+    .year-input {
+      width: 6rem;
+      letter-spacing: 0.08em;
+    }
+    .arrow {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #111827;
+      padding: 0 0.25rem;
+      user-select: none;
+      text-align: center;
+    }
+    .ascii-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      align-items: center;
+      text-align: center;
+    }
+    .ascii-panel.is-disabled .ascii-block {
+      opacity: 0.55;
+    }
+    .ascii-block {
+      background: #111827;
+      color: #f9fafb;
+      padding: 1rem;
+      border-radius: 12px;
+      font-family:
+        ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+        "Liberation Mono", "Courier New", monospace;
+      font-size: 1rem;
+      line-height: 1.2;
+      white-space: pre;
+      overflow-x: auto;
+      display: inline-block;
+      margin: 0 auto;
+      letter-spacing: 0;
+      font-kerning: none;
+      font-variant-ligatures: none;
+      font-feature-settings:
+        "liga" 0,
+        "calt" 0;
+    }
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    .actions button {
+      padding: 0.6rem 1rem;
+      border-radius: 999px;
+      border: none;
+      background: #111827;
+      color: #f9fafb;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .actions button:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+    .status {
+      font-size: 0.85rem;
+    }
+  </style>
+  <div class="panel">
+    <h2>年号を入力</h2>
+    <div class="year-inputs" aria-label="年号入力（元→先）">
+      <input
+        id="from-year"
+        class="digit-input year-input"
+        inputmode="numeric"
+        pattern="[0-9]{4}"
+        maxlength={4}
+        placeholder={DEFAULT_FROM_YEAR}
+        value={DEFAULT_FROM_YEAR}
+        aria-label="古い年号（4桁の数字）"
+      />
+      <span class="arrow" aria-hidden="true">→</span>
+      <input
+        id="to-year"
+        class="digit-input year-input"
+        inputmode="numeric"
+        pattern="[0-9]{4}"
+        maxlength={4}
+        placeholder={DEFAULT_TO_YEAR}
+        value={DEFAULT_TO_YEAR}
+        aria-label="新しい年号（4桁の数字）"
+      />
+    </div>
+  </div>
+  <div class="panel ascii-panel">
+    <h2>生成結果</h2>
+    <pre
+      class="ascii-block"
+      id="ascii-output"
+      aria-label="年号シフトのASCIIアート">{INITIAL_ASCII}</pre>
+    <div class="actions">
+      <button type="button" id="copy-button">コピー</button>
+      <span class="status" id="copy-status" role="status"></span>
+    </div>
+  </div>
+  <script
+    type="module"
+    is:inline
+    define:vars={{
+      digitArt: DIGIT_ART,
+      digitHeight: DIGIT_HEIGHT,
+      digitWidth: DIGIT_WIDTH,
+      defaultFromYear: DEFAULT_FROM_YEAR,
+      defaultToYear: DEFAULT_TO_YEAR,
+    }}
+  >
+    const generator = document.querySelector(".generator");
+
+    if (!generator) {
+      console.error("初期化に失敗しました。");
+    } else {
+      const sanitizeYear = (value) => value.replace(/\D/g, "").slice(0, 4);
+      const BLANK_CELL = " ".repeat(digitWidth);
+      const isDigit = (value) =>
+        typeof value === "string" && /^[0-9]$/.test(value);
+      const isYear4 = (value) =>
+        typeof value === "string" && /^[0-9]{4}$/.test(value);
+
+      const rtrim = (value) => value.replace(/[ \t]+$/u, "");
+
+      const getGlyph = (digit) => {
+        if (!isDigit(digit)) return null;
+        const glyph = digitArt[digit];
+        if (!Array.isArray(glyph) || glyph.length !== digitHeight) return null;
+        if (glyph.some((row) => typeof row !== "string")) return null;
+        return glyph;
+      };
+
+      const makeStaticCell = (digit) => {
+        const glyph = getGlyph(digit);
+        if (!glyph) return null;
+        return {
+          rows8: [BLANK_CELL, ...glyph, BLANK_CELL],
+        };
+      };
+
+      const makeShiftCell = (fromDigit, toDigit) => {
+        const fromGlyph = getGlyph(fromDigit);
+        const toGlyph = getGlyph(toDigit);
+        if (!fromGlyph || !toGlyph) return null;
+
+        const stack = [...toGlyph, ...fromGlyph];
+        const shift = 3;
+
+        const topOverflow = stack[shift - 1] ?? BLANK_CELL;
+        const window6 = stack.slice(shift, shift + digitHeight);
+        while (window6.length < digitHeight) window6.push(BLANK_CELL);
+        const bottomOverflow = stack[shift + digitHeight] ?? BLANK_CELL;
+
+        return {
+          rows8: [topOverflow, ...window6, bottomOverflow],
+        };
+      };
+
+      const renderFrame = (cells) => {
+        const rows = Array.from({ length: 8 }, () => "");
+        for (let row = 0; row < 8; row += 1) {
+          rows[row] = cells
+            .map((cell) => cell.rows8[row] ?? BLANK_CELL)
+            .join("");
+        }
+
+        const top = rtrim(rows[0]);
+        const bottom = rtrim(rows[7]);
+        const middle = rows.slice(1, 7).map((line) => rtrim(line));
+
+        const output = [];
+        if (top.length > 0) output.push(top);
+        output.push(...middle);
+        if (bottom.length > 0) output.push(bottom);
+        return output.join("\n");
+      };
+
+      const buildShiftAscii = (fromYearValue, toYearValue) => {
+        if (!isYear4(fromYearValue) || !isYear4(toYearValue)) {
+          return "";
+        }
+        const fromDigits = fromYearValue.split("");
+        const toDigits = toYearValue.split("");
+        const cells = [];
+        for (let i = 0; i < 4; i += 1) {
+          const fromDigit = fromDigits[i];
+          const toDigit = toDigits[i];
+          const cell =
+            fromDigit === toDigit
+              ? makeStaticCell(toDigit)
+              : makeShiftCell(fromDigit, toDigit);
+          if (!cell) return "";
+          cells.push(cell);
+        }
+        return renderFrame(cells);
+      };
+
+      const fromInput = document.getElementById("from-year");
+      const toInput = document.getElementById("to-year");
+      const outputField = document.getElementById("ascii-output");
+      const asciiPanel = outputField?.closest(".ascii-panel");
+      const copyButton = document.getElementById("copy-button");
+      const copyStatus = document.getElementById("copy-status");
+
+      let fromYear = defaultFromYear;
+      let toYear = defaultToYear;
+      let copyResetHandle = null;
+      let lastValidAscii = (outputField?.textContent ?? "").trimEnd();
+
+      const updateCopyStatus = (message, isError = false) => {
+        if (!copyStatus) {
+          return;
+        }
+        copyStatus.textContent = message || "";
+        copyStatus.dataset.state = isError ? "error" : "success";
+        if (copyResetHandle) {
+          window.clearTimeout(copyResetHandle);
+        }
+        if (message) {
+          copyResetHandle = window.setTimeout(() => {
+            copyStatus.textContent = "";
+            delete copyStatus.dataset.state;
+          }, 2000);
+        }
+      };
+
+      const setOutputDisabled = (disabled) => {
+        if (asciiPanel instanceof HTMLElement) {
+          asciiPanel.classList.toggle("is-disabled", disabled);
+        }
+        if (outputField instanceof HTMLElement) {
+          outputField.setAttribute(
+            "aria-disabled",
+            disabled ? "true" : "false",
+          );
+        }
+      };
+
+      const updateOutput = () => {
+        const canRender = isYear4(fromYear) && isYear4(toYear);
+
+        if (!canRender) {
+          setOutputDisabled(true);
+          if (copyButton) {
+            copyButton.disabled = !lastValidAscii;
+          }
+          return;
+        }
+
+        const ascii = buildShiftAscii(fromYear, toYear);
+        const isValid = Boolean(ascii);
+        if (isValid) {
+          lastValidAscii = ascii;
+        }
+        if (outputField && lastValidAscii) {
+          outputField.textContent = lastValidAscii;
+        }
+        setOutputDisabled(false);
+        if (copyButton) {
+          copyButton.disabled = !isValid;
+        }
+      };
+
+      fromInput?.addEventListener("input", (event) => {
+        const input = event.target;
+        if (!(input instanceof HTMLInputElement)) {
+          return;
+        }
+        const value = sanitizeYear(input.value || "");
+        input.value = value;
+        fromYear = value;
+        updateOutput();
+      });
+
+      toInput?.addEventListener("input", (event) => {
+        const input = event.target;
+        if (!(input instanceof HTMLInputElement)) {
+          return;
+        }
+        const value = sanitizeYear(input.value || "");
+        input.value = value;
+        toYear = value;
+        updateOutput();
+      });
+
+      copyButton?.addEventListener("click", async () => {
+        const ascii = buildShiftAscii(fromYear, toYear) || lastValidAscii;
+        if (!ascii) {
+          updateCopyStatus(
+            "コピーに失敗しました。ブラウザの権限をご確認ください。",
+            true,
+          );
+          return;
+        }
+        try {
+          if (!navigator.clipboard) {
+            throw new Error("Clipboard unavailable");
+          }
+          await navigator.clipboard.writeText(ascii);
+          updateCopyStatus("コピーしました！");
+        } catch (error) {
+          console.error(error);
+          updateCopyStatus(
+            "コピーに失敗しました。ブラウザの権限をご確認ください。",
+            true,
+          );
+        }
+      });
+
+      updateOutput();
+    }
+  </script>
+</section>

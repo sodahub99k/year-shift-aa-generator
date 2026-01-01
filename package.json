@@ -6,9 +6,15 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "aa": "node scripts/aa.mjs",
+    "aa:test": "node scripts/aa_random_test.mjs"
   },
   "dependencies": {
-    "astro": "^5.16.6"
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "astro": "^5.16.6",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
   }
 }

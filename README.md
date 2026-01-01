@@ -1,46 +1,16 @@
-# Astro Starter Kit: Basics
+# yearshift
 
-```sh
-pnpm create astro@latest -- --template basics
-```
+4桁の年号 `from -> to` の差分桁だけを「カウンター途中フレーム」風に差し替えたASCIIアートを生成し、ワンクリックでコピーできるページです。
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+## 開発
 
-## 🚀 Project Structure
+- `pnpm dev` : 開発サーバー起動
+- `pnpm build` : ビルド（`dist/`）
+- `pnpm preview` : ビルド結果のプレビュー
 
-Inside of your Astro project, you'll see the following folders and files:
+## CLI（生成ロジック確認）
 
-```text
-/
-├── public/
-│   └── favicon.svg
-├── src
-│   ├── assets
-│   │   └── astro.svg
-│   ├── components
-│   │   └── Welcome.astro
-│   ├── layouts
-│   │   └── Layout.astro
-│   └── pages
-│       └── index.astro
-└── package.json
-```
+- `node scripts/aa.mjs 2026 3026`
+- `node scripts/aa_random_test.mjs`
 
-To learn more about the folder structure of an Astro project, refer to [our guide on project structure](https://docs.astro.build/en/basics/project-structure/).
-
-## 🧞 Commands
-
-All commands are run from the root of the project, from a terminal:
-
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `pnpm install`             | Installs dependencies                            |
-| `pnpm dev`             | Starts local dev server at `localhost:4321`      |
-| `pnpm build`           | Build your production site to `./dist/`          |
-| `pnpm preview`         | Preview your build locally, before deploying     |
-| `pnpm astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `pnpm astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+数字グリフは [src/lib/digitArt.mjs](src/lib/digitArt.mjs) に集約しています（サイト/CLIで同一ソースを参照）。

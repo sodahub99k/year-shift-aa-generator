@@ -163,8 +163,16 @@ const INITIAL_ASCII = buildShiftAscii(DEFAULT_FROM_YEAR, DEFAULT_TO_YEAR);
     if (!generator) {
       console.error("初期化に失敗しました。");
     } else {
-      const sanitizeYear = (value: string): string =>
-        value.replace(/\D/g, "").slice(0, 4);
+      const sanitizeYear = (value: string): string => {
+        return value.replace(/\D/g, "").slice(0, 4);
+      };
+      const padYear = (value: string): string => {
+        const digits = sanitizeYear(value);
+        if (digits.length > 0 && digits.length < 4) {
+          return digits.padStart(4, "0");
+        }
+        return digits;
+      };
       const isYear4 = (value: string): boolean =>
         typeof value === "string" && /^[0-9]{4}$/.test(value);
 
@@ -230,7 +238,9 @@ const INITIAL_ASCII = buildShiftAscii(DEFAULT_FROM_YEAR, DEFAULT_TO_YEAR);
       };
 
       const updateOutput = (): void => {
-        const canRender = isYear4(fromYear) && isYear4(toYear);
+        const paddedFromYear = padYear(fromYear);
+        const paddedToYear = padYear(toYear);
+        const canRender = isYear4(paddedFromYear) && isYear4(paddedToYear);
 
         if (!canRender) {
           setOutputDisabled(true);
@@ -240,7 +250,7 @@ const INITIAL_ASCII = buildShiftAscii(DEFAULT_FROM_YEAR, DEFAULT_TO_YEAR);
           return;
         }
 
-        const ascii = buildShiftAscii(fromYear, toYear);
+        const ascii = buildShiftAscii(paddedFromYear, paddedToYear);
         const isValid = Boolean(ascii);
         if (isValid) {
           lastValidAscii = ascii;
@@ -277,7 +287,10 @@ const INITIAL_ASCII = buildShiftAscii(DEFAULT_FROM_YEAR, DEFAULT_TO_YEAR);
       });
 
       copyButton?.addEventListener("click", async (): Promise<void> => {
-        const ascii = buildShiftAscii(fromYear, toYear) || lastValidAscii;
+        const paddedFromYear = padYear(fromYear);
+        const paddedToYear = padYear(toYear);
+        const ascii =
+          buildShiftAscii(paddedFromYear, paddedToYear) || lastValidAscii;
         if (!ascii) {
           updateCopyStatus(
             "コピーに失敗しました。ブラウザの権限をご確認ください。",

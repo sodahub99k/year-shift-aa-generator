@@ -1,5 +1,6 @@
 {
-  "description": "西暦がずれて更新される，あのAAを生成するサイト。",
+  "title": "西暦更新AAジェネレーター",
+  "description": "西暦がずれて更新される，あのASCIIアートを生成するサイト。",
   "tags": [
     "astro",
     "joke",
